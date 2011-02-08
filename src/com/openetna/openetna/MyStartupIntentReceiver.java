@@ -8,9 +8,9 @@ public class MyStartupIntentReceiver extends BroadcastReceiver{
     @Override
     public void onReceive(Context context, Intent intent) {
         if (!MainActivity.isGappsInstalled()) {
-            Intent serviceIntent = new Intent();
-            serviceIntent.setAction("com.openetna.openetna.MainActivity");
-            context.startActivity(serviceIntent);
+            Intent nintent = new Intent(context, MainActivity.class);
+            nintent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(nintent);
         }
     }
 }

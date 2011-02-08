@@ -45,18 +45,22 @@ public class MainActivity extends PreferenceActivity {
     @Override
     public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
         if (preference == mInstallGapps) {
+            mInstallGapps.setSummary("Installing...");
             String fn = getGappsPath();
             if (fn == null) {
                Toast.makeText(this,"Could not open /etc/init.d/15checkgapps! Reflash system.img!", Toast.LENGTH_LONG).show(); 
+               updateScreen();
                return true;
             }
             File f = new File(fn);
             if (!f.exists()) {
                 showDialog(0);
+                updateScreen();
                 return true;
             }
             if (!remountSystem(true)) {
                 Toast.makeText(this,"Remounting system as rw failed!", Toast.LENGTH_LONG).show();
+                updateScreen();
                 return true;
             }
             if (!installGapps(fn)) {
@@ -75,7 +79,7 @@ public class MainActivity extends PreferenceActivity {
     @Override
     protected Dialog onCreateDialog (int id, Bundle args) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("Could not find the gapps file "+ getGappsFilename() + " on your sdcard! (I have looked at " + getGappsFilename() + ")")
+                builder.setMessage("Could not find the gapps file "+ getGappsFilename() + " on your sdcard! (I have looked at " + getGappsPath() + ")")
                .setNeutralButton("Ok", new DialogInterface.OnClickListener() {
                    public void onClick(DialogInterface dialog, int id) {
                         dialog.cancel();
@@ -120,7 +124,7 @@ public class MainActivity extends PreferenceActivity {
         return null;
     }
 
-    public boolean isGappsInstalled() {
+    public static boolean isGappsInstalled() {
         File f = new File("/system/framework/com.google.android.maps.jar");
         return f.exists();
     }
@@ -138,8 +142,9 @@ public class MainActivity extends PreferenceActivity {
 
     public int exec(String executable) {
         try {
+            String[] s = { "/system/xbin/su", "-c", executable };
             // Executes the command.
-            Process process = Runtime.getRuntime().exec(executable);
+            Process process = Runtime.getRuntime().exec(s);
     
             // Reads stdout.
             // NOTE: You can write to stdin of the command using
@@ -153,12 +158,21 @@ public class MainActivity extends PreferenceActivity {
                 output.append(buffer, 0, read);
             }
             reader.close();
-        
+
+            BufferedReader reader2 = new BufferedReader(
+                    new InputStreamReader(process.getErrorStream()));
+            StringBuffer output2 = new StringBuffer();
+            while ((read = reader2.read(buffer)) > 0) {
+                output2.append(buffer, 0, read);
+            }
+            reader2.close();
+ 
             // Waits for the command to finish.
             process.waitFor();
    
             Log.i("GappsInstaller", "Running " + executable);
             Log.i("GappsInstaller", "Stdout got " + output.toString());
+            Log.i("GappsInstaller", "Stderr got " + output2.toString());
             Log.i("GappsInstaller", "Exit value is " + process.exitValue());
             return process.exitValue();
         } catch (IOException e) {
